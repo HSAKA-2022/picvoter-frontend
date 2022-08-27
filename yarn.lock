@@ -474,10 +474,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@thisbeyond/solid-dnd@npm:^0.6.1":
+  version: 0.6.1
+  resolution: "@thisbeyond/solid-dnd@npm:0.6.1"
+  peerDependencies:
+    solid-js: ^1.1.0
+  checksum: 06b923f298b135db786636930299a621ae5d1c24fdf32546ac48098dfce58e208304e3dff7f07c4a3d9722b264d3df041a258cc2d63ba396441b577c39700eee
+  languageName: node
+  linkType: hard
+
 "@tootallnate/once@npm:2":
   version: 2.0.0
   resolution: "@tootallnate/once@npm:2.0.0"
   checksum: ad87447820dd3f24825d2d947ebc03072b20a42bfc96cbafec16bff8bbda6c1a81fcb0be56d5b21968560c5359a0af4038a68ba150c3e1694fe4c109a063bed8
+  languageName: node
+  linkType: hard
+
+"@types/hammerjs@npm:^2.0.41":
+  version: 2.0.41
+  resolution: "@types/hammerjs@npm:2.0.41"
+  checksum: d16fbd688fc9b18cc270abe8dea8d4c50ef7bd8375e593d92c233d299387933a6b003c8db69819344833052458bc5f9ef1b472001277a49f095928d184356006
   languageName: node
   linkType: hard
 
@@ -1466,6 +1482,13 @@ __metadata:
   version: 4.2.10
   resolution: "graceful-fs@npm:4.2.10"
   checksum: 3f109d70ae123951905d85032ebeae3c2a5a7a997430df00ea30df0e3a6c60cf6689b109654d6fdacd28810a053348c4d14642da1d075049e6be1ba5216218da
+  languageName: node
+  linkType: hard
+
+"hammerjs@npm:^2.0.8":
+  version: 2.0.8
+  resolution: "hammerjs@npm:2.0.8"
+  checksum: b092da7d1565a165d7edb53ef0ce212837a8b11f897aa3cf81a7818b66686b0ab3f4747fbce8fc8a41d1376594639ce3a054b0fd4889ca8b5b136a29ca500e27
   languageName: node
   linkType: hard
 
@@ -2855,7 +2878,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "vite-template-solid@workspace:."
   dependencies:
+    "@thisbeyond/solid-dnd": ^0.6.1
+    "@types/hammerjs": ^2.0.41
     autoprefixer: ^10.4.8
+    hammerjs: ^2.0.8
     husky: ^8.0.1
     lint-staged: ^13.0.3
     postcss: ^8.4.16
