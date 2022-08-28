@@ -2,7 +2,6 @@ import type {Component} from "solid-js";
 import {SwipeImage} from "./components/SwipeImage";
 import {createResource} from "solid-js";
 
-const BACKEND_URL = "https://localhost:5000";
 
 type Picture = {
     id: string;
@@ -47,8 +46,19 @@ async function getPictures(_:unknown, info: { value?: Array<Picture> }) {
     ];
 }
 
-const [pictures, {mutate: mutatePictures, refetch: refetchPictures}] =
-    createResource(getPictures);
+function fillBuffer(update: number, info: { value?: Array<number> }) {
+    const existing = (info?.value ?? [])?.filter((it) => it !== update)
+    const degenerate = 5 - (existing.length ?? 0)
+    const highest = existing.reduce((acc, it) => Math.max(acc, it), 0) ?? 0
+    debugger
+    return [
+        ...(existing ?? []),
+        ...[... new Array(degenerate)].map((_, index) => highest + index + 1),
+    ]
+
+}
+const [buffer, { mutate: mutateBuffer ,refetch: refill}] =
+    createResource(fillBuffer);
 
 
 async function onVote(id:string, vote: boolean) {
@@ -70,6 +80,14 @@ async function onVote(id:string, vote: boolean) {
 
 }
 
+function removePicture(id: number) {
+    console.log("removing", id)
+    const withRemoved = buffer().filter((it) => it !== id)
+    mutateBuffer(withRemoved)
+    console.dir(buffer())
+    refill(id)
+}
+
 
 const App: Component = () => {
     return (
@@ -77,11 +95,11 @@ const App: Component = () => {
             width: "100vw",
             height: "100vw",
         }}>
-            {pictures()?.map((pic, index) => (
+            {buffer()?.reverse()?.map((id) => (
                 <SwipeImage
                     src={pic.url}
-                    onVote={(vote) => onVote(pic.id, vote)}
-                    index={index}
+                    onRemove={() => removePicture(id)}
+                    key={id}
                 />
             ))}
         </div>
