@@ -1,105 +1,73 @@
-import {Component, createEffect, createResource, createSignal, onMount, Show} from "solid-js";
-import Hammer from "hammerjs";
+import {
+  Component,
+  createResource,
+  createSignal,
+  Show,
+} from "solid-js"
+import Hammer from "hammerjs"
 
-const THRESHOLD = 200;
-const BACKEND_URL = "https://localhost:5000";
+const THRESHOLD = 200
 type Picture = {
-    id: string;
-    url: string;
-};
+  id: string
+  url: string
+}
 
 let pictureId = 0
 
 async function getPicture(): Promise<Picture> {
-    return {
-        id: Math.random() + "",
-        url: pictureId++,
-    }
-    // const response = await fetch(`${BACKEND_URL}/`);
-    // const data = await response.json();
-    // return data;
+  return {
+    id: Math.random() + "",
+    url: `${pictureId++}`,
+  }
+  // const response = await fetch(`${BACKEND_URL}/`);
+  // const data = await response.json();
+  // return data;
 }
 
 async function votePicture(id: string, value: boolean): Promise<void> {
-    console.log("voting")
-    // await fetch(`${BACKEND_URL}/vote`, {
-    //     method: "POST",
-    //     body: JSON.stringify({
-    //         id,
-    //         value,
-    //     }),
-    // });
+  console.log("voting")
+  // await fetch(`${BACKEND_URL}/vote`, {
+  //     method: "POST",
+  //     body: JSON.stringify({
+  //         id,
+  //         value,
+  //     }),
+  // });
 }
 
+export const SwipeImage: Component = () => {
+  const [image] = createResource(getPicture)
+  const [voted, setVoted] = createSignal(false)
 
-export const SwipeImage: Component<{
-    onRemove: () => void;
-}> = ({onRemove}) => {
-    const [imageRef, setImageRef] = createSignal<HTMLImageElement | undefined>(undefined);
-    const [image] = createResource(getPicture);
-    const [xOffset, setXOffset] = createSignal(0);
-    const [yOffset, setYOffset] = createSignal(0);
-    const [hide, setHide] = createSignal(false);
+  const attachImage = (ref: HTMLDivElement) => {
+    const mc = new Hammer(ref)
 
-    async function onVote(vote: boolean) {
-        setHide(true)
-        const img = image()
-        if (img == undefined) {
-            return
-        }
-        await votePicture(img.id, vote)
-        onRemove()
-    }
+    mc.on("panstart", ev => {
+      ref.style.cursor = `grabbing`
+    })
 
-    createEffect(() => {
-        const ref = imageRef();
-        if (ref == undefined) {
-            return
-        }
-        const mc = new Hammer(ref);
-        mc.on("panleft panright panend", function (ev) {
-            if (ev.type === "panend") {
-                setXOffset(0);
-                setYOffset(0);
-                if (ev.deltaX > THRESHOLD) {
-                    console.log("up")
-                    void onVote(true)
-                }
+    mc.on("panleft panright", ev => {
+      ref.style.transition = ``
+      ref.style.transform = `translateX(${ev.deltaX}px)`
+    })
 
-                if (ev.deltaX < -THRESHOLD) {
-                    console.log("down")
-                    void onVote(false)
-                }
+    mc.on("panend", () => {
+      ref.style.transition = `transform 0.1s ease-out`
+      ref.style.transform = ``
+      ref.style.cursor = ``
+    })
+  }
 
-                return;
-            }
-
-            setXOffset(-ev.deltaX);
-            setYOffset(ev.deltaY);
-        });
-    }, []);
-    return (
-        <>
-            <Show when={image() != undefined}>
-                <div
-                    ref={setImageRef}
-                    src={image()?.url ?? ""}
-                    style={{
-                        width: "20vw",
-                        height: "20vw",
-                        transition: "all 0.01s ease",
-                        display: "flex",
-                        "justify-content": "center",
-                        "align-items": "center",
-                        cursor: "grab",
-
-                        right: `${xOffset()}px`,
-                        top: `${yOffset()}px`,
-                        position: "absolute",
-                        background: "white"
-                    }} >{image()?.url}</div>
-            </Show>
-        </>
-    )
-        ;
-};
+  return (
+    <>
+      <Show when={image() != undefined}>
+        <div
+          class="w-full h-screen flex justify-center items-center fixed bg-white cursor-grab"
+          ref={attachImage}
+        >
+          {image()?.url}
+        </div>
+      </Show>
+    </>
+  )
+}
