@@ -21,9 +21,10 @@ async function getPicture(): Promise<Picture> {
 }
 
 async function votePicture(id: string, value: boolean): Promise<void> {
+    console.log("voting")
     await fetch(`${BACKEND_URL}/vote`, {
         method: "POST",
-        body: JSON.stringify({
+            body: JSON.stringify({
             id,
             value,
         }),
@@ -32,7 +33,7 @@ async function votePicture(id: string, value: boolean): Promise<void> {
 
 async function getPictures(_:unknown, info: { value?: Array<Picture> }) {
     console.log("refetching!")
-    console.dir(info)
+    //console.dir(info)
     const toFetch = 5 - (info?.value?.length ?? 0)
     console.dir(toFetch)
     const fetched = await Promise.all(
@@ -49,42 +50,41 @@ async function getPictures(_:unknown, info: { value?: Array<Picture> }) {
 const [pictures, {mutate: mutatePictures, refetch: refetchPictures}] =
     createResource(getPictures);
 
-async function onNegative(id: string) {
-    const [first, ...rest] = pictures() ?? [];
-    mutatePictures((info) => {
-        return rest
-    })
+
+async function onVote(id:string, vote: boolean) {
+
     try {
-        await votePicture(id, false);
+        await votePicture(id, vote)
     } catch (e) {
+        console.log("error woops")
     }
-    refetchPictures({value: rest});
+
+    mutatePictures((info) => {
+        info?.shift()
+        console.log("info",info)
+        const newPictures = refetchPictures()
+        console.log("newPicture", newPictures)
+
+        return info?.slice(1) 
+    })
+
 }
 
-async function onPositive(id: string) {
-    const [first, ...rest] = pictures() ?? [];
-    mutatePictures((info) => {
-        const [first, ...rest] = info ?? [];
-        return rest
-    })
-    try {
-        await votePicture(id, false);
-    } catch (e) { }
-    refetchPictures({value: rest});
-}
 
 const App: Component = () => {
     return (
-        <>
+        <div style={{
+            width: "100vw",
+            height: "100vw",
+        }}>
             {pictures()?.map((pic, index) => (
                 <SwipeImage
                     src={pic.url}
-                    onPositive={() => onPositive(pic.id)}
-                    onNegative={() => onNegative(pic.id)}
+                    onVote={(vote) => onVote(pic.id, vote)}
                     index={index}
                 />
             ))}
-        </>
+        </div>
     );
 };
 

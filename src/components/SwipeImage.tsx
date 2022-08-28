@@ -4,10 +4,9 @@ import Hammer from "hammerjs";
 const THRESHOLD = 200;
 export const SwipeImage: Component<{
     src: string;
-    onPositive: () => void;
-    onNegative: () => void;
+    onVote: (vote: boolean) => void;
     index: number;
-}> = ({ src, onPositive, onNegative, index }) => {
+}> = ({ src, onVote, index }) => {
     let imageRef: HTMLImageElement | undefined;
     const [xOffset, setXOffset] = createSignal(0);
     const [yOffset, setYOffset] = createSignal(0);
@@ -18,11 +17,13 @@ export const SwipeImage: Component<{
                 setXOffset(0);
                 setYOffset(0);
                 if (ev.deltaX > THRESHOLD) {
-                    onPositive();
+                    console.log("up")
+                    onVote(true)
                 }
 
                 if (ev.deltaX < -THRESHOLD) {
-                    onNegative();
+                    console.log("down")
+                    onVote(false)
                 }
 
                 return;
@@ -37,8 +38,12 @@ export const SwipeImage: Component<{
             ref={imageRef}
             src={src}
             style={{
-                width: "100vw",
+                width: "20vw",
+                height: "20vw",
                 transition: "all 0.01s ease",
+                display: "flex",
+                "justify-content": "center",
+                "align-items": "center",
 
                 right: `${xOffset()}px`,
                 top: `${yOffset()}px`,
