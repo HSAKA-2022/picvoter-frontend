@@ -1,6 +1,6 @@
-import { Component, createResource, createSignal } from "solid-js"
+import { Component, createResource, createSignal, Show } from "solid-js"
 import Hammer from "hammerjs"
-import { getImage, voteImage } from "../api"
+import { BACKEND_URL, getImage, voteImage } from "../api"
 import { BUFFER_SIZE } from "../util"
 
 const getMovedValues = (deltaX: number) => {
@@ -15,6 +15,7 @@ const getMovedValues = (deltaX: number) => {
 export const SwipeImage: Component<{
   index: number
   onExited: () => void
+  onDrag: (deltaX: number) => void
 }> = props => {
   const [color] = createSignal(Math.random() * 255)
   const [isExiting, setIsExiting] = createSignal(false)
@@ -33,45 +34,48 @@ export const SwipeImage: Component<{
     })
 
     mc.on("panend", ev => {
-      ref.style.transform = ``
       ref.style.transition = `transform 0.1s ease-out`
       const [percentMoved] = getMovedValues(ev.deltaX)
 
+      const imageID = image()?.id
       if (percentMoved > 0.8) {
         setIsExiting(true)
         ref.style.transform = `translateX(${document.documentElement.clientWidth}px)`
-        console.log("upvoting")
+        if (imageID) voteImage(imageID, 1)
       } else if (percentMoved < -0.8) {
         setIsExiting(true)
         ref.style.transform = `translateX(-${document.documentElement.clientWidth}px)`
-        console.log("downvoting")
+        if (imageID) voteImage(imageID, -1)
+      } else {
+        ref.style.transform = ``
       }
     })
   }
 
   return (
-    <div
-      class="h-screen w-full fixed bg-white cursor-grab flex items-center justify-center"
-      ref={ref => onImageMount(ref)}
-      onTransitionEnd={ev => {
-        if (!isExiting()) return
+    <Show when={image()}>
+      <img
+        src={`${BACKEND_URL}/${image()?.url}.jpg`}
+        class="h-screen w-full fixed bg-white cursor-grab flex items-center justify-center"
+        ref={ref => onImageMount(ref)}
+        onTransitionEnd={ev => {
+          if (!isExiting()) return
 
-        setIsExiting(false)
-        props.onExited()
+          setIsExiting(false)
+          props.onExited()
 
-        setTimeout(() => {
-          const el = ev.target as HTMLDivElement
-          el.style.transition = ``
-          el.style.transform = ``
-        }, 0)
-      }}
-      style={{
-        "z-index": BUFFER_SIZE - props.index,
-        background: `rgb(${color()}, ${color()}, ${color()})`,
-        "pointer-events": props.index !== 0 ? "none" : "auto",
-      }}
-    >
-      {color()}
-    </div>
+          setTimeout(() => {
+            const el = ev.target as HTMLDivElement
+            el.style.transition = ``
+            el.style.transform = ``
+            refetch()
+          }, 0)
+        }}
+        style={{
+          "z-index": BUFFER_SIZE - props.index,
+          "pointer-events": props.index !== 0 ? "none" : "auto",
+        }}
+      />
+    </Show>
   )
 }
