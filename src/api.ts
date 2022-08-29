@@ -1,8 +1,9 @@
-export const BACKEND_URL = "https://pic-backend.burg.games"
+// export const BACKEND_URL = "https://pic-backend.burg.games"
+export const BACKEND_URL = "http://localhost:8000"
 
 export type Image = {
   id: string
-  url: string
+  hash: string
 }
 
 export const getImage = async (): Promise<Image> => {
