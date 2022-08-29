@@ -46,9 +46,9 @@ const App: Component = () => {
           return (
             <SwipeImage
               onExited={() => {
-                backBuffer().style.transition = ``
-                backBuffer().style.transform = ``
-                backBuffer().style.opacity = ``
+                // backBuffer().style.transition = ``
+                // backBuffer().style.transform = ``
+                // backBuffer().style.opacity = ``
 
                 setActiveIndex(prev => (prev + 1) % BUFFER_SIZE)
 
@@ -62,9 +62,9 @@ const App: Component = () => {
                 downvoteOverlay.style.opacity = `0`
               }}
               onExiting={value => {
-                backBuffer().style.transition = `opacity,transform 0.15s ease-out`
-                backBuffer().style.transform = `scale3d(1, 1, 1)`
-                backBuffer().style.opacity = `1`
+                // backBuffer().style.transition = `opacity,transform 0.15s ease-out`
+                // backBuffer().style.transform = `scale3d(1, 1, 1)`
+                // backBuffer().style.opacity = `1`
 
                 if (!upvoteOverlay || !downvoteOverlay) return
                 if (value === 1) {
@@ -79,8 +79,8 @@ const App: Component = () => {
                 const t = 0.7 + 0.25 * absMoved
                 const o = 0.9 * absMoved
 
-                backBuffer().style.transform = `scale3d(${t}, ${t}, 1.0)`
-                backBuffer().style.opacity = `${o}`
+                // backBuffer().style.transform = `scale3d(${t}, ${t}, 1.0)`
+                // backBuffer().style.opacity = `${o}`
 
                 if (!upvoteOverlay || !downvoteOverlay) return
                 if (percentMoved > VOTE_THRESHOLD) {
