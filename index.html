@@ -1,16 +1,474 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#000000" />
-    <link rel="shortcut icon" type="image/ico" href="/src/assets/favicon.ico" />
-    <title>Solid App</title>
+    <title>HSAKA PicVoter</title>
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.1.1/css/all.css"
+      integrity="sha384-O8whS3fhG2OnA5Kas0Y9l3cfpmYjapjI0E4theH4iuMD+pLhbf6JI0jIMfYcK3yZ"
+      crossorigin="anonymous"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+
+    <style>
+      body,
+      html {
+        width: 100%;
+        height: 100%;
+
+        max-width: 100%;
+        max-height: 100%;
+
+        margin: 0;
+        padding: 0;
+        position: relative;
+        overflow: hidden;
+        background-color: #000;
+      }
+
+      body.animating {
+        pointer-events: none;
+      }
+
+      .loading-overlay {
+        position: absolute;
+        z-index: 100;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        opacity: 0;
+        pointer-events: none;
+        background-color: #000;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        transition: opacity 0.15s ease-in-out;
+
+        &.active {
+          pointer-events: initial;
+          opacity: 1;
+        }
+      }
+
+      .vote-overlays {
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        opacity: 0;
+        transition: opacity 0.15s ease-out;
+        z-index: 50;
+        pointer-events: none;
+
+        &.active {
+          opacity: 1;
+        }
+
+        .up,
+        .down {
+          z-index: 51;
+          position: absolute;
+          width: 20%;
+          top: 0;
+          bottom: 0;
+          opacity: 0.4;
+          font-size: 10vw;
+          color: #fff;
+          transition: opacity 0.15s ease-out;
+
+          display: flex;
+          justify-content: center;
+          align-items: center;
+
+          &.active {
+            opacity: 0.9;
+          }
+        }
+
+        .up {
+          left: 0;
+          background-color: rgb(24, 188, 9);
+        }
+
+        .down {
+          right: 0;
+          background-color: rgb(234, 52, 28);
+        }
+      }
+
+      .buffer {
+        display: none;
+
+        position: absolute;
+        z-index: 20;
+        bottom: 0;
+        right: 0;
+        height: 100px;
+
+        > img {
+          width: 100px;
+          height: 100px;
+        }
+      }
+
+      .main {
+        touch-action: none !important;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        > img {
+          object-fit: contain;
+        }
+
+        .front {
+          z-index: 2;
+        }
+
+        .back {
+          z-index: 1;
+          opacity: 0;
+          transform: scale3d(0.7, 0.7, 1);
+        }
+
+        .front,
+        .back {
+          position: absolute;
+
+          max-width: 100%;
+          max-height: 100%;
+
+          &.animating {
+            pointer-events: none;
+            transition: transform 0.15s linear;
+          }
+        }
+      }
+
+      .spinner {
+        width: 100px;
+        height: 80px;
+        text-align: center;
+        font-size: 15px;
+      }
+
+      .spinner > div {
+        background-color: #fff;
+        height: 100%;
+        width: 12px;
+        display: inline-block;
+
+        animation: sk-stretchdelay 1.2s infinite ease-in-out;
+      }
+
+      .spinner .rect2 {
+        animation-delay: -1.1s;
+      }
+
+      .spinner .rect3 {
+        animation-delay: -1s;
+      }
+
+      .spinner .rect4 {
+        animation-delay: -0.9s;
+      }
+
+      .spinner .rect5 {
+        animation-delay: -0.8s;
+      }
+
+      @keyframes sk-stretchdelay {
+        0%,
+        40%,
+        100% {
+          transform: scaleY(0.4);
+        }
+        20% {
+          transform: scaleY(1);
+        }
+      }
+    </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <script>
+      const BACKEND_URL = "https://pic-backend";
 
-    <script src="/src/index.tsx" type="module"></script>
+      const _frontBuffer = document.getElementById("main-1");
+      const _backBuffer = document.getElementById("main-2");
+
+      const voteOverlay = document.getElementById("vote-overlay");
+      const upvoteOverlay = document.getElementById("up-overlay");
+      const downvoteOverlay = document.getElementById("down-overlay");
+
+      const loadingOverlay = document.getElementById("loading-overlay");
+
+      const buffers = [
+        {
+          ref: _frontBuffer,
+          id: "",
+        },
+        {
+          ref: _backBuffer,
+          id: "",
+        },
+      ];
+
+      _frontBuffer.addEventListener("dragstart", (ev) => ev.preventDefault());
+      _backBuffer.addEventListener("dragstart", (ev) => ev.preventDefault());
+
+      const mc = new Hammer(document.body);
+
+      mc.add(
+        new Hammer.Pan({
+          direction: Hammer.DIRECTION_HORIZONTAL,
+          threshold: 0,
+        })
+      );
+
+      mc.on("panleft panright", handleBufferPan);
+      mc.on("panend pancancel", handleBufferPanEnd);
+
+      document.body.addEventListener("click touch", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      });
+
+      let frontBuffer = 0;
+
+      function handleBufferPan(ev) {
+        const screenWidth = document.documentElement.clientWidth;
+        let percentMoved = (ev.deltaX / screenWidth) * 2;
+        let absMoved = Math.abs(percentMoved);
+        absMoved = absMoved > 1.0 ? 1.0 : Math.floor(absMoved * 100) / 100;
+        const t = 0.7 + 0.25 * absMoved;
+        const o = 0.9 * absMoved;
+        const fb = getFrontBuffer();
+        const bb = getBackBuffer();
+
+        voteOverlay.classList.add("active");
+
+        fb.ref.style.transform = `translate3d(${ev.deltaX}px, 0, 0)`;
+        bb.ref.style.transform = `scale3d(${t}, ${t}, 1.0)`;
+        bb.ref.style.opacity = `${o}`;
+
+        if (percentMoved > 0.5) {
+          downvoteOverlay.classList.add("active");
+        } else if (percentMoved < -0.5) {
+          upvoteOverlay.classList.add("active");
+        } else {
+          upvoteOverlay.classList.remove("active");
+          downvoteOverlay.classList.remove("active");
+        }
+      }
+
+      function handleBufferPanEnd(ev) {
+        const fb = getFrontBuffer();
+        const bb = getBackBuffer();
+
+        const screenWidth = document.documentElement.clientWidth;
+        let percentMoved = (ev.deltaX / screenWidth) * 2;
+        let absMoved = Math.abs(percentMoved);
+        absMoved = absMoved > 1.0 ? 1.0 : Math.floor(absMoved * 100) / 100;
+        const t = 0.7 + 0.25 * absMoved;
+
+        if (percentMoved > 0.5) {
+          voteCurrentPic(false);
+        } else if (percentMoved < -0.5) {
+          voteCurrentPic(true);
+        } else {
+          fb.ref.classList.add("animating");
+          bb.ref.classList.add("animating");
+          document.body.classList.add("animating");
+
+          fb.ref.style = "";
+          bb.ref.style = "";
+
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              fb.ref.classList.remove("animating");
+              bb.ref.classList.remove("animating");
+              document.body.classList.remove("animating");
+            });
+          }, 150);
+        }
+
+        voteOverlay.classList.remove("active");
+        requestAnimationFrame(() => {
+          upvoteOverlay.classList.remove("active");
+          downvoteOverlay.classList.remove("active");
+        });
+      }
+
+      function handleBufferPinch(ev) {
+        ev.preventDefault();
+
+        console.dir(ev);
+      }
+
+      let loadedImages = [];
+      let initialized = false;
+
+      const bufferElements = document.getElementsByClassName("preload");
+
+      let waitingForImages = true;
+      let animating = false;
+
+      window.addEventListener("keyup", (ev) => {
+        if (waitingForImages) return;
+
+        if (ev.keyCode === 65) {
+          voteCurrentPic(true);
+        }
+
+        if (ev.keyCode === 83) {
+          voteCurrentPic(false);
+        }
+      });
+
+      for (let i = 0; i < bufferElements.length; i++) {
+        if (bufferElements[i].complete) addLoadedImage(bufferElements[i]);
+
+        bufferElements[i].addEventListener("load", (ev) => {
+          addLoadedImage(bufferElements[i]);
+        });
+      }
+
+      function addLoadedImage(loaded) {
+        loadedImages.push(loaded);
+
+        if (!initialized) {
+          if (loadedImages.length < 3) return;
+
+          initialized = true;
+
+          const [front, back] = loadedImages.splice(0, 2);
+          const frontId = front.getAttribute("data-pic-id");
+          const backId = back.getAttribute("data-pic-id");
+
+          getFrontBuffer().ref.classList.add("front");
+          getBackBuffer().ref.classList.add("back");
+
+          setFrontBuffer(front, frontId);
+          setBackBuffer(back, backId);
+          [front, back].forEach((it) => loadNewImage(it));
+
+          setWaiting(false);
+        }
+
+        if (waitingForImages) checkIfReady();
+      }
+
+      function checkIfReady() {
+        // we are only waiting for images if literally none are loaded
+        // (to replace the back buffer on swap)
+        setWaiting(loadedImages.length === 0);
+      }
+
+      function voteCurrentPic(isUpvote) {
+        const fb = getFrontBuffer();
+        const bb = getBackBuffer();
+        const votedImageSrc = fb.ref.src;
+
+        fb.ref.classList.add("animating");
+        bb.ref.classList.add("animating");
+        document.body.classList.add("animating");
+
+        bb.ref.style.transform = "scale3d(1.0, 1.0, 1.0)";
+        bb.ref.style.opacity = "1";
+
+        if (isUpvote) {
+          fb.ref.style.transform = "translate3d(-100%, 0, 0)";
+        } else {
+          fb.ref.style.transform = "translate3d(100%, 0, 0)";
+        }
+
+        setTimeout(() => {
+          requestAnimationFrame(() => {
+            fb.ref.classList.remove("animating");
+            bb.ref.classList.remove("animating");
+            document.body.classList.remove("animating");
+
+            getFrontBuffer().ref.classList.remove("front");
+            getBackBuffer().ref.classList.remove("back");
+
+            fb.ref.style = "";
+            bb.ref.style = "";
+
+            const [nextImageElem] = loadedImages.splice(0, 1);
+            const nextImageId = nextImageElem.getAttribute("data-pic-id");
+
+            frontBuffer = 1 - frontBuffer;
+
+            getFrontBuffer().ref.classList.add("front");
+            getBackBuffer().ref.classList.add("back");
+
+            requestAnimationFrame(() => {
+              setBackBuffer(nextImageElem, nextImageId);
+              loadNewImage(nextImageElem);
+            });
+
+            checkIfReady();
+          });
+        }, 150);
+
+        const id = fb.id;
+        fetch(``, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ isUpvote }),
+        })
+          .then((res) => {})
+          .catch((err) => console.error(`error voting: ${err}`));
+      }
+
+      function loadNewImage(bufferElem) {
+        fetch("/")
+          .then((res) => res.json())
+          .then((res) => {
+            bufferElem.src = `/files/${res}.jpg`;
+            bufferElem.setAttribute("data-pic-id", res);
+            checkIfReady();
+          })
+          .catch((err) => console.log(`error getting next id: ${err}`));
+      }
+
+      function getFrontBuffer() {
+        return buffers[frontBuffer];
+      }
+      function getBackBuffer() {
+        return buffers[1 - frontBuffer];
+      }
+
+      function setFrontBuffer(elem, id) {
+        buffers[frontBuffer].ref.src = elem.src;
+        buffers[frontBuffer].id = id;
+      }
+
+      function setBackBuffer(elem, id) {
+        buffers[1 - frontBuffer].ref.src = elem.src;
+        buffers[1 - frontBuffer].id = id;
+      }
+
+      function setWaiting(isWaiting) {
+        waitingForImages = isWaiting;
+
+        if (isWaiting) loadingOverlay.classList.add("active");
+        else loadingOverlay.classList.remove("active");
+      }
+    </script>
   </body>
 </html>
