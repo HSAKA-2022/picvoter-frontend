@@ -66,6 +66,7 @@ export const SwipeImage: Component<{
       <img
         src={`${BACKEND_URL}/files/${image()?.hash}.jpg`}
         class="h-screen w-full fixed bg-black cursor-grab flex items-center justify-center object-contain"
+        style="object-fit: contain"
         classList={{ hidden: props.index > 1 }}
         ref={ref => onImageMount(ref)}
         onTransitionEnd={ev => {
